@@ -30,4 +30,4 @@ jobs:
         with:
           BRANCH: gh-pages
           folder: dist
-          target-folder: /
+      
