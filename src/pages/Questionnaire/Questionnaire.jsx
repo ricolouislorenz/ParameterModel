@@ -1,5 +1,7 @@
+// src/pages/Questionnaire/Questionnaire.jsx
+
 import React, { useState } from 'react';
-import { Container, Typography, Box, Button } from '@mui/material';
+import { Typography, Box, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom'; // Für die Navigation zur Evaluation
 import Question from './Question';
 import QuestionOverview from './QuestionOverview';
@@ -98,32 +100,38 @@ const Questionnaire = () => {
   return (
     <Box
       sx={{
-        background: 'linear-gradient(135deg, #43cea2, #185a9d)', // Correct gradient direction (top-left to bottom-right)
+        background: 'linear-gradient(135deg, #43cea2, #185a9d)',
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '40px 20px',
+        flexDirection: 'column',
+        width: '100%', // Hinzugefügt
       }}
     >
-      <Container maxWidth="lg" sx={{ textAlign: 'center', color: 'black' }}>
+      <Box sx={{ textAlign: 'center', color: 'black', width: '100%' }}>
         <Typography variant="h3" component="h1" gutterBottom sx={{ color: 'black' }}>
           Questionnaire
         </Typography>
         {currentQuestionIndex === -1 ? (
-          <Box sx={{ maxWidth: '800px', margin: '0 auto' }}> {/* Begrenze die Breite für die Beschreibung */}
+          <Box sx={{ maxWidth: '800px', margin: '0 auto' }}>
             <Typography variant="h6" gutterBottom style={{ color: 'black', textAlign: 'justify' }}>
               The questionnaire is designed to capture user preferences across four dimensions: Scalability, Security, Decentralization (the Blockchain Trilemma), and Adoption, which is a crucial factor for Cardano.
               Through 20 questions, the survey identifies user settings and preferences, creating a profile represented by a color code that reflects individual attitudes toward each dimension as well as an overall impression.
               In the future, it will be possible to compare your preferences with those of votes, DReps, or other users to gain better contextual insights.
               The questionnaire and its evaluation do not claim to be scientifically comprehensive or to encompass all aspects fully; rather, they aim to highlight basic attitudes and tendencies.
             </Typography>
-            <Button variant="contained" sx={{ backgroundColor: '#424242', marginTop: '20px', color: '#fff' }} onClick={startQuestionnaire}>
+            <Button
+              variant="contained"
+              sx={{ backgroundColor: '#424242', marginTop: '20px', color: '#fff' }}
+              onClick={startQuestionnaire}
+            >
               Start Questionnaire
             </Button>
           </Box>
         ) : (
-          <Box>
+          <Box sx={{ width: '100%' }}>
             <Question
               question={questions[currentQuestionIndex]}
               index={currentQuestionIndex}
@@ -131,11 +139,16 @@ const Questionnaire = () => {
               weight={weights[currentQuestionIndex]}
             />
             <Box sx={{ marginTop: '40px' }}>
-              <QuestionOverview current={currentQuestionIndex} total={questions.length} onNavigate={setCurrentQuestionIndex} answers={answers} />
+              <QuestionOverview
+                current={currentQuestionIndex}
+                total={questions.length}
+                onNavigate={setCurrentQuestionIndex}
+                answers={answers}
+              />
             </Box>
           </Box>
         )}
-      </Container>
+      </Box>
     </Box>
   );
 };

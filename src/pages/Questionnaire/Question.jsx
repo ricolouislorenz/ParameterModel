@@ -1,7 +1,8 @@
+// src/pages/Questionnaire/Question.jsx
+
 import React, { useEffect } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import PropTypes from 'prop-types';
-import speechbubble from '../../assets/images/speechbubble.png';
 import '../../styles/App.css';
 
 const Question = ({ question, index, onAnswer, weight }) => {
@@ -17,25 +18,53 @@ const Question = ({ question, index, onAnswer, weight }) => {
     <Box
       sx={{
         position: 'relative',
-        backgroundImage: `url(${speechbubble})`,
-        backgroundSize: 'contain',
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
         padding: '60px',
         minHeight: '400px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        color: 'black'
+        color: 'black',
+        width: '100%',
+        border: '5px solid #fff', // Weißer Rahmen
+        borderRadius: '15px', // Abgerundete Ecken
+        backgroundColor: 'rgba(255, 255, 255, 0.8)', // Leicht transparentes Weiß
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)', // Schatteneffekt
+        textAlign: 'center',
       }}
     >
-      <Typography variant="h6" gutterBottom sx={{ textAlign: 'center' }}>{question}</Typography>
-      <Box sx={{ display: 'flex', gap: 2, marginTop: '20px' }}>
-        <Button variant="contained" sx={{ backgroundColor: '#424242' }} onClick={() => handleAnswer(1)}>Agree</Button>
-        <Button variant="contained" sx={{ backgroundColor: '#424242' }} onClick={() => handleAnswer(0)}>Neutral</Button>
-        <Button variant="contained" sx={{ backgroundColor: '#424242' }} onClick={() => handleAnswer(-1)}>Disagree</Button>
-        <Button variant="contained" sx={{ backgroundColor: '#424242' }} onClick={() => handleAnswer(null)}>Skip</Button>
+      <Typography variant="h6" gutterBottom>
+        {question}
+      </Typography>
+      <Box sx={{ display: 'flex', gap: 2, marginTop: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: '#424242', color: '#fff', minWidth: '120px' }}
+          onClick={() => handleAnswer(1)}
+        >
+          Agree
+        </Button>
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: '#424242', color: '#fff', minWidth: '120px' }}
+          onClick={() => handleAnswer(0)}
+        >
+          Neutral
+        </Button>
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: '#424242', color: '#fff', minWidth: '120px' }}
+          onClick={() => handleAnswer(-1)}
+        >
+          Disagree
+        </Button>
+        <Button
+          variant="contained"
+          sx={{ backgroundColor: '#424242', color: '#fff', minWidth: '120px' }}
+          onClick={() => handleAnswer(null)}
+        >
+          Skip
+        </Button>
       </Box>
     </Box>
   );

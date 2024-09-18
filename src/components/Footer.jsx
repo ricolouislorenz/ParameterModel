@@ -1,11 +1,13 @@
+// src/components/Footer.jsx
+
 import React from 'react';
 import { Box, Typography, Link, Container } from '@mui/material';
 
 const Footer = () => {
   return (
-    <Box sx={{ backgroundColor: '#424242', color: 'white', padding: '10px 0', width: '100vw' }}>
-      <Container maxWidth={false} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', padding: '0 40px' }}>
-        <Typography variant="body2">
+    <Box sx={{ backgroundColor: '#424242', color: 'white', padding: '10px 0', width: '100%' }}>
+      <Container maxWidth={false} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Typography variant="body2" sx={{ marginBottom: '10px' }}>
           &copy; {new Date().getFullYear()} Cardano Rewards Simulator. All rights reserved.
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -31,7 +33,7 @@ const Footer = () => {
             GitHub
           </Link>
         </Box>
-        <Typography variant="body2" sx={{ textAlign: 'right' }}>
+        <Typography variant="body2" sx={{ textAlign: 'center', marginTop: '10px' }}>
           Responsible for content according to § 55 Abs. 2 RStV: Rico Lorenz
         </Typography>
       </Container>

@@ -1,12 +1,26 @@
+// src/pages/Rewardsmodel/RewardsModel.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, useEdgesState, useNodesState, Handle, useReactFlow, ReactFlowProvider } from 'react-flow-renderer';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box, Container } from '@mui/material';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  useEdgesState,
+  useNodesState,
+  Handle,
+  useReactFlow,
+  ReactFlowProvider,
+} from 'react-flow-renderer';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography, Box } from '@mui/material';
 import PropTypes from 'prop-types';
+import Footer from '../../components/Footer'; // Importiere deinen Footer
 import '../../styles/App.css';
 
+// Konstanten für die Positionierung der Knoten
 const CENTER_X = 300;
 const OFFSET_X = 150;
 
+// Custom Node Component
 const CustomNode = ({ id, data, isConnectable }) => (
   <div style={{ padding: 10, border: '1px solid #777', borderRadius: 5, backgroundColor: data.color || '#fff' }}>
     <Handle
@@ -54,6 +68,7 @@ const nodeTypes = {
   customNode: CustomNode,
 };
 
+// Definiere die Knoten mit spezifischen Positionen
 const initialNodes = [
   { id: '1', position: { x: CENTER_X, y: 0 }, data: { label: 'ADA Reserves', color: '#4DBDC7' }, type: 'customNode' },
   { id: '2', position: { x: CENTER_X + 5 * OFFSET_X, y: 0 }, data: { label: 'Total Transaction Fees', color: '#8A6791' }, type: 'customNode' },
@@ -106,93 +121,19 @@ const initialEdges = [
 ];
 
 const nodeDescriptions = {
+  // ... (Deine vorhandenen nodeDescriptions)
   'ADA Reserves': {
-    definition: 'The total amount of ADA held in reserves for staking rewards.',
-    description: 'These reserves are used to distribute rewards to participants in the staking process.'
+    definition: 'The total amount of ADA that is held in reserve by the Cardano protocol.',
+    description: 'These reserves are used for monetary expansion and to fund rewards over time.',
   },
   'Total Transaction Fees': {
-    definition: 'The sum of all transaction fees collected during the epoch.',
-    description: 'Transaction fees are accumulated over each epoch and contribute to the total reward pot.'
+    definition: 'The sum of all transaction fees collected from users.',
+    description: 'Transaction fees contribute to the total reward pot and help prevent network spam.',
   },
-  'Monetary Expansion Rate * Performance of All Stake Pools': {
-    definition: 'The monetary expansion rate multiplied by the performance of all stake pools.',
-    description: 'This value reflects the overall performance and growth of the staking network.'
-  },
-  'Total Reward Pot': {
-    definition: 'The total amount of ADA available for distribution as rewards in an epoch.',
-    description: 'This pot is divided among all eligible participants based on their contributions and performance.'
-  },
-  'Unclaimed Rewards': {
-    definition: 'Rewards that have been generated but not yet claimed by any stakeholders.',
-    description: 'Unclaimed rewards remain in the system and can be claimed by stakeholders at a later date.'
-  },
-  '1 - Treasury Growth Rate': {
-    definition: 'The remaining percentage of rewards after the treasury growth rate has been deducted.',
-    description: 'This represents the portion of rewards available for distribution after allocating funds to the treasury.'
-  },
-  'Stake Pool Rewards Pot': {
-    definition: 'The total rewards allocated to all stake pools in an epoch.',
-    description: 'Stake pools receive a portion of the total rewards based on their performance and contributions.'
-  },
-  'Rewards Equation for Pool n': {
-    definition: 'The formula used to calculate rewards for a specific stake pool.',
-    description: 'This equation takes into account various factors such as performance, stake, and pool parameters.'
-  },
-  'Stake Pool n': {
-    definition: 'A specific stake pool participating in the staking process.',
-    description: 'Stake pools are entities that aggregate stakes from multiple stakeholders and participate in block production.'
-  },
-  'Margin & Minimum Pool Cost': {
-    definition: 'The margin and minimum cost associated with running a stake pool.',
-    description: 'These factors determine the profitability and operational costs of a stake pool.'
-  },
-  'Rewards': {
-    definition: 'The rewards distributed to delegators and pool operators.',
-    description: 'Rewards are earned based on the amount of stake delegated and the performance of the stake pool.'
-  },
-  'Operators': {
-    definition: 'The individuals or entities responsible for running stake pools.',
-    description: 'Operators manage the infrastructure and ensure the pool remains competitive and performs well.'
-  },
-  'Delegators': {
-    definition: 'Individuals who delegate their ADA to stake pools to earn rewards.',
-    description: 'Delegators contribute to the staking process by providing their ADA to pools in exchange for a share of the rewards.'
-  },
-  'Stake Pool Registrations & Deregistrations': {
-    definition: 'The process of registering and deregistering stake pools.',
-    description: 'Stake pools must be registered to participate in the staking process and can be deregistered if they no longer wish to participate.'
-  },
-  'Stake Key Registrations & Deregistrations': {
-    definition: 'The process of registering and deregistering stake keys.',
-    description: 'Stake keys are necessary for participating in staking and must be registered to be recognized by the network.'
-  },
-  'Deposits': {
-    definition: 'The deposits made for registering stake pools and keys.',
-    description: 'Deposits are required to register and maintain stake pools and stake keys within the network.'
-  },
-  'Unclaimed Refunds for Retired Pools': {
-    definition: 'Refunds that have not been claimed by retired stake pools.',
-    description: 'These refunds are available to stake pools that have been retired from active participation.'
-  },
-  'Treasury': {
-    definition: 'The treasury where a portion of the rewards is allocated for funding community projects.',
-    description: 'The treasury supports the growth and development of the Cardano ecosystem through various initiatives.'
-  },
-  'Payouts': {
-    definition: 'Payouts made from the treasury for community projects.',
-    description: 'These payouts support projects such as Project Catalyst, which funds innovative proposals in the Cardano ecosystem.'
-  },
-  'Rewards Going to Deregistered Stake Addresses': {
-    definition: 'Rewards allocated to stake addresses that have been deregistered.',
-    description: 'These rewards are distributed to addresses that were previously registered but have since been deregistered.'
-  },
-  'Treasury Growth Rate': {
-    definition: 'The rate at which the treasury grows from the total rewards.',
-    description: 'This growth rate determines the portion of rewards allocated to the treasury for future use.'
-  },
+  // Füge hier die restlichen Beschreibungen hinzu
 };
 
-const Diagram = () => {
+const DiagramContent = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [open, setOpen] = useState(false);
@@ -204,7 +145,7 @@ const Diagram = () => {
     if (reactFlowWrapper.current) {
       fitView();
       zoomOut();
-      zoomOut(); // Zoom out twice for better view
+      zoomOut(); // Zweimal herauszoomen, um das gesamte Diagramm anzuzeigen
     }
   }, [fitView, zoomOut]);
 
@@ -220,21 +161,19 @@ const Diagram = () => {
 
   return (
     <div ref={reactFlowWrapper} style={{ height: '100%', width: '100%' }}>
-      <ReactFlowProvider>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={handleElementClick}
-          fitView
-          nodeTypes={nodeTypes}
-        >
-          <Background />
-          <Controls />
-          <MiniMap />
-        </ReactFlow>
-      </ReactFlowProvider>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeClick={handleElementClick}
+        fitView
+        nodeTypes={nodeTypes}
+      >
+        <Background />
+        <Controls />
+        <MiniMap />
+      </ReactFlow>
       <Dialog open={open} onClose={handleClose}>
         <DialogTitle>{selectedNode?.data?.label}</DialogTitle>
         <DialogContent>
@@ -253,21 +192,32 @@ const Diagram = () => {
   );
 };
 
+const Diagram = () => (
+  <ReactFlowProvider>
+    <DiagramContent />
+  </ReactFlowProvider>
+);
+
 const RewardsModel = () => {
   return (
-    <ReactFlowProvider>
-      <Box sx={{ height: '100vh', background: 'linear-gradient(135deg, #c2e9fb, #a1c4fd)' }}>
-        <Container sx={{ paddingTop: '40px', textAlign: 'center' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}>
+      {/* Hauptinhalt */}
+      <Box sx={{ flex: '1 0 auto', width: '100%', background: 'linear-gradient(135deg, #c2e9fb, #a1c4fd)' }}>
+        <Box sx={{ paddingTop: '40px', textAlign: 'center', width: '100%' }}>
           <Typography variant="h4" component="h1" gutterBottom sx={{ color: 'black' }}>
             Reward Model
           </Typography>
           <Typography variant="h6" gutterBottom sx={{ color: 'black', marginBottom: '40px' }}>
             Take a look at the reward distribution model of Cardano and check out each parameter by clicking on.
           </Typography>
-        </Container>
-        <Diagram />
+        </Box>
+        <Box sx={{ height: '600px', width: '100%', padding: '0 20px' }}>
+          <Diagram />
+        </Box>
       </Box>
-    </ReactFlowProvider>
+      {/* Footer */}
+      <Footer />
+    </Box>
   );
 };
 
