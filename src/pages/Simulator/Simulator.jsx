@@ -42,9 +42,9 @@ const Simulator = () => {
   // Function to fetch and store historical data
   const fetchAndStoreHistoricalData = async () => {
     try {
-      // Fetch maximum historical data
+      // Fetch historical data for the last 90 days
       const response = await axios.get(
-        `https://api.coingecko.com/api/v3/coins/cardano/market_chart?vs_currency=usd&days=max`
+        `https://api.coingecko.com/api/v3/coins/cardano/market_chart?vs_currency=usd&days=90`
       );
       // Store data in localStorage
       localStorage.setItem('historicalData', JSON.stringify(response.data));
@@ -77,63 +77,27 @@ const Simulator = () => {
 
   // Fetch historical data on component mount
   useEffect(() => {
-    const historicalData = localStorage.getItem('historicalData');
-    if (historicalData) {
-      const data = JSON.parse(historicalData);
-      processHistoricalData(data);
-    } else {
-      fetchAndStoreHistoricalData();
-    }
-  }, [chartType]);
+    const fetchData = async () => {
+      const historicalData = localStorage.getItem('historicalData');
+      const lastUpdate = localStorage.getItem('lastHistoricalUpdate');
+      const now = Date.now();
 
-  // Function to update historical data with the latest data point
-  const updateHistoricalData = async () => {
-    try {
-      // Fetch the latest data point (last 1 day)
-      const response = await axios.get(
-        `https://api.coingecko.com/api/v3/coins/cardano/market_chart?vs_currency=usd&days=1`
-      );
-
-      const historicalData = JSON.parse(localStorage.getItem('historicalData'));
-      const newData = response.data;
-
-      // Append the new data point to historical data
-      ['prices', 'market_caps'].forEach((key) => {
-        historicalData[key] = historicalData[key].concat(newData[key]);
-      });
-
-      // Update localStorage
-      localStorage.setItem('historicalData', JSON.stringify(historicalData));
-      localStorage.setItem('lastHistoricalUpdate', Date.now().toString());
-
-      processHistoricalData(historicalData);
-    } catch (error) {
-      console.error('Error updating historical data', error);
-    }
-  };
-
-  // Schedule update of historical data every 24 hours
-  useEffect(() => {
-    // Check when historical data was last updated
-    const lastUpdate = localStorage.getItem('lastHistoricalUpdate');
-    const now = Date.now();
-    if (lastUpdate) {
-      const elapsed = now - parseInt(lastUpdate, 10);
-      if (elapsed >= 24 * 60 * 60 * 1000) {
-        updateHistoricalData();
+      if (historicalData && lastUpdate && now - parseInt(lastUpdate, 10) < 24 * 60 * 60 * 1000) {
+        const data = JSON.parse(historicalData);
+        processHistoricalData(data);
+      } else {
+        await fetchAndStoreHistoricalData();
       }
-    } else {
-      // If no last update timestamp, fetch and store historical data
-      fetchAndStoreHistoricalData();
-    }
+    };
+    fetchData();
 
     // Set interval to update historical data every 24 hours
-    dataUpdateIntervalRef.current = setInterval(updateHistoricalData, 24 * 60 * 60 * 1000);
+    dataUpdateIntervalRef.current = setInterval(fetchAndStoreHistoricalData, 24 * 60 * 60 * 1000);
 
     return () => {
       clearInterval(dataUpdateIntervalRef.current);
     };
-  }, []);
+  }, [chartType]);
 
   // Function to fetch live ADA price
   const fetchLivePrice = async () => {
@@ -154,19 +118,22 @@ const Simulator = () => {
 
   // Fetch live price on component mount
   useEffect(() => {
-    const cachedPrice = localStorage.getItem('livePrice');
-    const lastFetchTime = localStorage.getItem('lastPriceUpdate');
+    const fetchData = async () => {
+      const cachedPrice = localStorage.getItem('livePrice');
+      const lastFetchTime = localStorage.getItem('lastPriceUpdate');
 
-    if (cachedPrice && lastFetchTime) {
-      const age = Date.now() - parseInt(lastFetchTime, 10);
-      if (age < 6 * 60 * 60 * 1000) {
-        setLivePrice(parseFloat(cachedPrice));
+      if (cachedPrice && lastFetchTime) {
+        const age = Date.now() - parseInt(lastFetchTime, 10);
+        if (age < 6 * 60 * 60 * 1000) {
+          setLivePrice(parseFloat(cachedPrice));
+        } else {
+          await fetchLivePrice();
+        }
       } else {
-        fetchLivePrice();
+        await fetchLivePrice();
       }
-    } else {
-      fetchLivePrice();
-    }
+    };
+    fetchData();
 
     // Set interval to update live price every 6 hours
     livePriceIntervalRef.current = setInterval(fetchLivePrice, 6 * 60 * 60 * 1000);
@@ -180,19 +147,37 @@ const Simulator = () => {
   // Function to calculate estimated rewards with a range
   const calculateRewards = () => {
     if (livePrice) {
-      const fluctuation = 0.1; // Simulate a 10% fluctuation
-      const minRho = rho * (1 - fluctuation),
-        maxRho = rho * (1 + fluctuation);
-      const minTau = tau * (1 - fluctuation),
-        maxTau = tau * (1 + fluctuation);
-      const minTheta = theta * (1 - fluctuation),
-        maxTheta = theta * (1 + fluctuation);
+      // Constants
+      const totalAdaSupply = 45000000000; // Total ADA Supply
+      const reserve = 14000000000; // Current Reserve
+      const epochLength = 5; // Days in an epoch
 
-      const minDailyReward = adaAmount * minRho * (1 - minTau) * minTheta;
-      const maxDailyReward = adaAmount * maxRho * (1 - maxTau) * maxTheta;
+      // Fluctuation factor (±10%)
+      const fluctuation = 0.1;
 
-      const minEpochReward = minDailyReward * 5; // Assuming 1 epoch = 5 days
-      const maxEpochReward = maxDailyReward * 5;
+      // Calculate parameter ranges
+      const minRho = rho * (1 - fluctuation);
+      const maxRho = rho * (1 + fluctuation);
+      const minTau = tau * (1 - fluctuation);
+      const maxTau = tau * (1 + fluctuation);
+      const minTheta = theta * (1 - fluctuation);
+      const maxTheta = theta * (1 + fluctuation);
+
+      // Calculate Total Active Stake ranges
+      const minTotalActiveStake = minTheta * totalAdaSupply;
+      const maxTotalActiveStake = maxTheta * totalAdaSupply;
+
+      // Calculate Total Rewards per Epoch ranges
+      const minTotalRewards = minRho * reserve * (1 - maxTau);
+      const maxTotalRewards = maxRho * reserve * (1 - minTau);
+
+      // Calculate Individual Reward per Epoch ranges
+      const minIndividualEpochReward = minTotalRewards * (adaAmount / maxTotalActiveStake);
+      const maxIndividualEpochReward = maxTotalRewards * (adaAmount / minTotalActiveStake);
+
+      // Calculate Rewards for Other Periods
+      const minDailyReward = minIndividualEpochReward / epochLength;
+      const maxDailyReward = maxIndividualEpochReward / epochLength;
 
       const minMonthlyReward = minDailyReward * 30;
       const maxMonthlyReward = maxDailyReward * 30;
@@ -202,7 +187,7 @@ const Simulator = () => {
 
       setRewardEstimate({
         day: { min: minDailyReward, max: maxDailyReward },
-        epoch: { min: minEpochReward, max: maxEpochReward },
+        epoch: { min: minIndividualEpochReward, max: maxIndividualEpochReward },
         month: { min: minMonthlyReward, max: maxMonthlyReward },
         year: { min: minYearlyReward, max: maxYearlyReward },
       });
@@ -217,6 +202,7 @@ const Simulator = () => {
     setRho(0.003);
     setTau(0.2);
     setTheta(0.8);
+    setAdaAmount(100);
   };
 
   const data = {
@@ -289,7 +275,7 @@ const Simulator = () => {
           Cardano Reward Simulator
         </Typography>
         <Typography variant="body1" style={{ marginTop: '8px', color: 'white' }}>
-          Simulate rewards based on live ADA prices.
+          Simulate rewards based on live ADA prices and adjustable parameters.
         </Typography>
       </Box>
 
@@ -331,7 +317,7 @@ const Simulator = () => {
               gutterBottom
               style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}
             >
-              {chartType === 'price' ? 'ADA Price Over Time' : 'Market Cap Over Time'}
+              {chartType === 'price' ? 'ADA Price Over Last 90 Days' : 'Market Cap Over Last 90 Days'}
             </Typography>
             <div style={{ flexGrow: 1, overflow: 'hidden' }}>
               {epochData.length > 0 ? (
@@ -387,9 +373,11 @@ const Simulator = () => {
                 Important Information
               </Typography>
               <Typography variant="body2" style={{ color: '#fff' }}>
-                Note: These are simplified calculations. Actual rewards may vary due to network conditions and
-                other factors. The calculations are transparent and intended for illustrative purposes. When
-                staking, your ADA remains in your wallet and is not locked.
+                The rewards are calculated based on the monetary expansion rate (ρ), treasury ratio (τ),
+                and participation rate (θ). Adjust these parameters to see how they influence your staking rewards.
+                The calculations assume a total ADA supply of 45,000,000,000 and a reserve of 14,000,000,000 ADA.
+                A fluctuation of ±10% is applied to parameters to estimate the best and worst-case scenarios.
+                Actual rewards may vary due to network conditions and other factors.
               </Typography>
             </Paper>
 
@@ -410,7 +398,7 @@ const Simulator = () => {
               </Typography>
 
               <Tooltip
-                title="The portion of remaining reserves used as rewards per epoch."
+                title="Fraction of remaining reserves used as rewards per epoch (default 0.003)."
                 arrow
               >
                 <TextField
@@ -429,7 +417,7 @@ const Simulator = () => {
               </Tooltip>
 
               <Tooltip
-                title="The fraction of monetary expansion that goes to the treasury."
+                title="Fraction of rewards allocated to the treasury (default 0.2)."
                 arrow
               >
                 <TextField
@@ -448,13 +436,13 @@ const Simulator = () => {
               </Tooltip>
 
               <Tooltip
-                title="The proportion of total stake that is actively staked."
+                title="Proportion of total ADA supply that is actively staked (default 0.8)."
                 arrow
               >
                 <TextField
                   type="number"
                   step="any"
-                  label="Active Stake Participation (θ)"
+                  label="Participation Rate (θ)"
                   value={theta}
                   onChange={(e) => setTheta(Number(e.target.value))}
                   placeholder="0.8"
@@ -466,19 +454,24 @@ const Simulator = () => {
                 />
               </Tooltip>
 
-              <TextField
-                type="number"
-                step="any"
-                label="Amount of ADA"
-                value={adaAmount}
-                onChange={(e) => setAdaAmount(Number(e.target.value))}
-                placeholder="100"
-                fullWidth
-                variant="outlined"
-                margin="dense"
-                InputLabelProps={{ style: { color: '#fff' } }}
-                InputProps={{ style: { color: '#fff' } }}
-              />
+              <Tooltip
+                title="The amount of ADA you are staking."
+                arrow
+              >
+                <TextField
+                  type="number"
+                  step="any"
+                  label="Amount of ADA"
+                  value={adaAmount}
+                  onChange={(e) => setAdaAmount(Number(e.target.value))}
+                  placeholder="100"
+                  fullWidth
+                  variant="outlined"
+                  margin="dense"
+                  InputLabelProps={{ style: { color: '#fff' } }}
+                  InputProps={{ style: { color: '#fff' } }}
+                />
+              </Tooltip>
 
               <Button
                 onClick={resetParams}
@@ -534,14 +527,12 @@ const Simulator = () => {
             </Typography>
             <Typography variant="h6" style={{ textAlign: 'center', color: '#fff' }}>
               {rewardEstimate
-                ? `${rewardEstimate[period].min.toFixed(2)} - ${rewardEstimate[period].max.toFixed(
-                    2
-                  )} ADA`
+                ? `${rewardEstimate[period].min.toFixed(6)} - ${rewardEstimate[period].max.toFixed(6)} ADA`
                 : 'Calculating...'}
             </Typography>
             <Typography variant="body2" style={{ textAlign: 'center', color: '#fff' }}>
               {rewardEstimate
-                ? `${(rewardEstimate[period].min * livePrice).toFixed(2)} - ${(
+                ? `$${(rewardEstimate[period].min * livePrice).toFixed(2)} - $${(
                     rewardEstimate[period].max * livePrice
                   ).toFixed(2)} USD`
                 : 'Calculating...'}
