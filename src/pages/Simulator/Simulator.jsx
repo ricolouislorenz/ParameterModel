@@ -1,5 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Typography, Grid, Box, Paper, TextField, Tooltip } from '@mui/material';
+import {
+  Button,
+  Typography,
+  Grid,
+  Box,
+  Paper,
+  TextField,
+  Tooltip,
+  InputAdornment,
+  IconButton,
+} from '@mui/material';
 import { Line } from 'react-chartjs-2';
 import axios from 'axios';
 import {
@@ -14,13 +24,36 @@ import {
   Filler,
 } from 'chart.js';
 import { useNavigate } from 'react-router-dom';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 
-// Registering scales and the Filler plugin in Chart.js
-Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Title, ChartTooltip, Legend, Filler);
+// Registering necessary Chart.js components
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  Filler
+);
 
 const Simulator = () => {
   const [livePrice, setLivePrice] = useState(null);
-  const [adaAmount, setAdaAmount] = useState(100); // Default value of 100 ADA
+
+  // State variables for raw input values
+  const [rhoInput, setRhoInput] = useState('0,003');
+  const [tauInput, setTauInput] = useState('0,2');
+  const [thetaInput, setThetaInput] = useState('0,8');
+  const [adaAmountInput, setAdaAmountInput] = useState('100');
+
+  // Parsed numeric values
+  const [rho, setRho] = useState(0.003);
+  const [tau, setTau] = useState(0.2);
+  const [theta, setTheta] = useState(0.8);
+  const [adaAmount, setAdaAmount] = useState(100);
+
   const [rewardEstimate, setRewardEstimate] = useState({
     day: { min: 0, max: 0 },
     epoch: { min: 0, max: 0 },
@@ -29,12 +62,10 @@ const Simulator = () => {
   });
   const [epochData, setEpochData] = useState([]);
   const [chartType, setChartType] = useState('price'); // 'price' or 'marketcap'
-  const [rho, setRho] = useState(0.003); // Default Rho
-  const [tau, setTau] = useState(0.2); // Default Tau
-  const [theta, setTheta] = useState(0.8); // Default Theta
+
   const navigate = useNavigate();
 
-  // Ref to store intervals
+  // Refs for intervals
   const livePriceIntervalRef = useRef(null);
   const dataUpdateIntervalRef = useRef(null);
   const retryTimeoutRef = useRef(null);
@@ -60,7 +91,7 @@ const Simulator = () => {
   const processHistoricalData = (data) => {
     let dataPoints = chartType === 'price' ? data.prices : data.market_caps;
 
-    // Limit the number of data points for performance
+    // Limit the number of data points
     const maxPoints = 1000;
     if (dataPoints.length > maxPoints) {
       const factor = Math.ceil(dataPoints.length / maxPoints);
@@ -82,7 +113,11 @@ const Simulator = () => {
       const lastUpdate = localStorage.getItem('lastHistoricalUpdate');
       const now = Date.now();
 
-      if (historicalData && lastUpdate && now - parseInt(lastUpdate, 10) < 24 * 60 * 60 * 1000) {
+      if (
+        historicalData &&
+        lastUpdate &&
+        now - parseInt(lastUpdate, 10) < 24 * 60 * 60 * 1000
+      ) {
         const data = JSON.parse(historicalData);
         processHistoricalData(data);
       } else {
@@ -92,7 +127,10 @@ const Simulator = () => {
     fetchData();
 
     // Set interval to update historical data every 24 hours
-    dataUpdateIntervalRef.current = setInterval(fetchAndStoreHistoricalData, 24 * 60 * 60 * 1000);
+    dataUpdateIntervalRef.current = setInterval(
+      fetchAndStoreHistoricalData,
+      24 * 60 * 60 * 1000
+    );
 
     return () => {
       clearInterval(dataUpdateIntervalRef.current);
@@ -144,12 +182,12 @@ const Simulator = () => {
     };
   }, []);
 
-  // Function to calculate estimated rewards with a range
+  // Function to calculate estimated rewards
   const calculateRewards = () => {
     if (livePrice) {
       // Constants
-      const totalAdaSupply = 45000000000; // Total ADA Supply
-      const reserve = 14000000000; // Current Reserve
+      const totalAdaSupply = 45000000000; // Total ADA supply
+      const reserve = 14000000000; // Current reserve
       const epochLength = 5; // Days in an epoch
 
       // Fluctuation factor (±10%)
@@ -163,19 +201,21 @@ const Simulator = () => {
       const minTheta = theta * (1 - fluctuation);
       const maxTheta = theta * (1 + fluctuation);
 
-      // Calculate Total Active Stake ranges
+      // Total active stake
       const minTotalActiveStake = minTheta * totalAdaSupply;
       const maxTotalActiveStake = maxTheta * totalAdaSupply;
 
-      // Calculate Total Rewards per Epoch ranges
+      // Total rewards per epoch
       const minTotalRewards = minRho * reserve * (1 - maxTau);
       const maxTotalRewards = maxRho * reserve * (1 - minTau);
 
-      // Calculate Individual Reward per Epoch ranges
-      const minIndividualEpochReward = minTotalRewards * (adaAmount / maxTotalActiveStake);
-      const maxIndividualEpochReward = maxTotalRewards * (adaAmount / minTotalActiveStake);
+      // Individual rewards per epoch
+      const minIndividualEpochReward =
+        minTotalRewards * (adaAmount / maxTotalActiveStake);
+      const maxIndividualEpochReward =
+        maxTotalRewards * (adaAmount / minTotalActiveStake);
 
-      // Calculate Rewards for Other Periods
+      // Rewards for other periods
       const minDailyReward = minIndividualEpochReward / epochLength;
       const maxDailyReward = maxIndividualEpochReward / epochLength;
 
@@ -196,24 +236,128 @@ const Simulator = () => {
 
   useEffect(() => {
     calculateRewards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [livePrice, adaAmount, rho, tau, theta]);
+
+  // Update parsed values whenever input changes
+  useEffect(() => {
+    let value = rhoInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 0.01) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setRho(parsedValue);
+    }
+  }, [rhoInput]);
+
+  useEffect(() => {
+    let value = tauInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 1) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setTau(parsedValue);
+    }
+  }, [tauInput]);
+
+  useEffect(() => {
+    let value = thetaInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 1) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setTheta(parsedValue);
+    }
+  }, [thetaInput]);
+
+  useEffect(() => {
+    let value = adaAmountInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 999999) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setAdaAmount(parsedValue);
+    }
+  }, [adaAmountInput]);
+
+  // Input handling functions
+  const handleInputChange = (setter) => (e) => {
+    setter(e.target.value);
+  };
+
+  const handleBlur = (
+    inputValue,
+    setInput,
+    setValue,
+    min,
+    max,
+    step,
+    decimalPlaces
+  ) => () => {
+    let value = inputValue.replace('.', ',');
+    let parsedValue = parseFloat(value.replace(',', '.'));
+
+    if (isNaN(parsedValue)) {
+      // Reset to previous valid value
+      setInput(setValue().toString().replace('.', ','));
+    } else {
+      if (parsedValue < min) parsedValue = min;
+      if (parsedValue > max) parsedValue = max;
+      parsedValue = parseFloat(parsedValue.toFixed(decimalPlaces));
+      setValue(parsedValue);
+      setInput(parsedValue.toString().replace('.', ','));
+    }
+  };
+
+  const incrementValue = (
+    value,
+    setValue,
+    setInput,
+    max,
+    step,
+    decimalPlaces
+  ) => () => {
+    let newValue = value + step;
+    if (newValue > max) newValue = max;
+    newValue = parseFloat(newValue.toFixed(decimalPlaces));
+    setValue(newValue);
+    setInput(newValue.toString().replace('.', ','));
+  };
+
+  const decrementValue = (
+    value,
+    setValue,
+    setInput,
+    min,
+    step,
+    decimalPlaces
+  ) => () => {
+    let newValue = value - step;
+    if (newValue < min) newValue = min;
+    newValue = parseFloat(newValue.toFixed(decimalPlaces));
+    setValue(newValue);
+    setInput(newValue.toString().replace('.', ','));
+  };
 
   const resetParams = () => {
     setRho(0.003);
+    setRhoInput('0,003');
     setTau(0.2);
+    setTauInput('0,2');
     setTheta(0.8);
+    setThetaInput('0,8');
     setAdaAmount(100);
+    setAdaAmountInput('100');
   };
 
   const data = {
     labels: epochData.map((point) => point.x),
     datasets: [
       {
-        label: chartType === 'price' ? 'ADA Price (USD)' : 'Market Cap (USD)',
+        label:
+          chartType === 'price'
+            ? 'ADA Price (USD)'
+            : 'Market Cap (USD)',
         data: epochData.map((point) => point.y),
         borderColor: 'rgba(255, 255, 255, 1)', // White for better contrast
         backgroundColor: 'rgba(255, 255, 255, 0.2)', // Light background
-        fill: true, // Enable fill, needs Filler plugin
+        fill: true, // Enable fill
         tension: 0.1,
       },
     ],
@@ -258,10 +402,15 @@ const Simulator = () => {
     backgroundColor: 'blue',
   };
 
+  // Icon button styles for white color
+  const iconButtonStyle = {
+    color: '#fff',
+  };
+
   return (
     <div
       style={{
-        backgroundImage: 'linear-gradient(to right, #FBA100, #7B658E)', // New gradient background
+        backgroundImage: 'linear-gradient(to right, #FBA100, #7B658E)', // New gradient
         minHeight: '100vh',
         color: '#ffffff',
         display: 'flex',
@@ -271,10 +420,16 @@ const Simulator = () => {
     >
       {/* Title and Description */}
       <Box mb={1} style={{ textAlign: 'center' }}>
-        <Typography variant="h4" sx={{ color: 'white', marginBottom: '10px' }}>
+        <Typography
+          variant="h4"
+          sx={{ color: 'white', marginBottom: '10px' }}
+        >
           Cardano Reward Simulator
         </Typography>
-        <Typography variant="body1" style={{ marginTop: '8px', color: 'white' }}>
+        <Typography
+          variant="body1"
+          style={{ marginTop: '8px', color: 'white' }}
+        >
           Simulate rewards based on live ADA prices and adjustable parameters.
         </Typography>
       </Box>
@@ -282,7 +437,12 @@ const Simulator = () => {
       {/* Buttons for Switching Between Pages */}
       <Box
         mb={2}
-        style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '10px' }}
+        style={{
+          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '10px',
+        }}
       >
         <Button
           variant="contained"
@@ -315,15 +475,24 @@ const Simulator = () => {
             <Typography
               variant="h6"
               gutterBottom
-              style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}
+              style={{
+                color: 'white',
+                textAlign: 'center',
+                marginBottom: '20px',
+              }}
             >
-              {chartType === 'price' ? 'ADA Price Over Last 90 Days' : 'Market Cap Over Last 90 Days'}
+              {chartType === 'price'
+                ? 'ADA Price Over Last 90 Days'
+                : 'Market Cap Over Last 90 Days'}
             </Typography>
             <div style={{ flexGrow: 1, overflow: 'hidden' }}>
               {epochData.length > 0 ? (
                 <Line data={data} options={options} />
               ) : (
-                <Typography variant="body1" style={{ color: '#fff', textAlign: 'center' }}>
+                <Typography
+                  variant="body1"
+                  style={{ color: '#fff', textAlign: 'center' }}
+                >
                   Loading chart data...
                 </Typography>
               )}
@@ -354,9 +523,11 @@ const Simulator = () => {
           </Paper>
         </Grid>
 
-        {/* Right Side: Parameters and ADA Price Section */}
+        {/* Right Side: Parameters and ADA Price */}
         <Grid item xs={12} md={6}>
-          <Box style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Box
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+          >
             {/* Explanatory Text */}
             <Paper
               style={{
@@ -368,16 +539,37 @@ const Simulator = () => {
               <Typography
                 variant="h6"
                 gutterBottom
-                style={{ color: 'white', textAlign: 'center', marginBottom: '10px' }}
+                style={{
+                  color: 'white',
+                  textAlign: 'center',
+                  marginBottom: '10px',
+                }}
               >
                 Important Information
               </Typography>
               <Typography variant="body2" style={{ color: '#fff' }}>
-                The rewards are calculated based on the monetary expansion rate (ρ), treasury ratio (τ),
-                and participation rate (θ). Adjust these parameters to see how they influence your staking rewards.
-                The calculations assume a total ADA supply of 45,000,000,000 and a reserve of 14,000,000,000 ADA.
-                A fluctuation of ±10% is applied to parameters to estimate the best and worst-case scenarios.
-                Actual rewards may vary due to network conditions and other factors.
+                The rewards are calculated using the following formula:
+              </Typography>
+              <Typography variant="body2" style={{ color: '#fff', marginTop: '10px' }}>
+                <strong>Total Rewards per Epoch = ρ × Reserve × (1 - τ)</strong>
+              </Typography>
+              <Typography variant="body2" style={{ color: '#fff', marginTop: '10px' }}>
+                <strong>
+                  Individual Reward per Epoch = (Total Rewards per Epoch × Your Stake) / Total Active Stake
+                </strong>
+              </Typography>
+              <Typography variant="body2" style={{ color: '#fff', marginTop: '10px' }}>
+                Where:
+                <ul>
+                  <li><strong>ρ (Monetary Expansion Rate)</strong> is the fraction of remaining reserves used as rewards per epoch.</li>
+                  <li><strong>τ (Treasury Ratio)</strong> is the fraction of rewards allocated to the treasury.</li>
+                  <li><strong>Reserve</strong> is the remaining ADA reserve (currently 14,000,000,000 ADA).</li>
+                  <li><strong>Your Stake</strong> is the amount of ADA you are staking.</li>
+                  <li><strong>Total Active Stake</strong> is the total amount of ADA actively staked in the network.</li>
+                </ul>
+              </Typography>
+              <Typography variant="body2" style={{ color: '#fff', marginTop: '10px' }}>
+                Adjust the parameters below to see how they influence your staking rewards. A fluctuation of ±10% is applied to estimate the best and worst-case scenarios. Actual rewards may vary due to network conditions and other factors.
               </Typography>
             </Paper>
 
@@ -392,84 +584,256 @@ const Simulator = () => {
               <Typography
                 variant="h6"
                 gutterBottom
-                style={{ color: 'white', textAlign: 'center', marginBottom: '20px' }}
+                style={{
+                  color: 'white',
+                  textAlign: 'center',
+                  marginBottom: '20px',
+                }}
               >
                 Adjustable Parameters
               </Typography>
 
               <Tooltip
-                title="Fraction of remaining reserves used as rewards per epoch (default 0.003)."
+                title="Fraction of remaining reserves used as rewards per epoch (min 0, max 0.01)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Monetary Expansion Rate (ρ)"
-                  value={rho}
-                  onChange={(e) => setRho(Number(e.target.value))}
-                  placeholder="0.003"
+                  value={rhoInput}
+                  onChange={handleInputChange(setRhoInput)}
+                  onBlur={handleBlur(
+                    rhoInput,
+                    setRhoInput,
+                    () => rho,
+                    0,
+                    0.01,
+                    0.001,
+                    5
+                  )}
+                  placeholder="0,003"
                   fullWidth
                   variant="outlined"
                   margin="dense"
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            rho,
+                            setRho,
+                            setRhoInput,
+                            0,
+                            0.001,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            rho,
+                            setRho,
+                            setRhoInput,
+                            0.01,
+                            0.001,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
                 />
               </Tooltip>
 
               <Tooltip
-                title="Fraction of rewards allocated to the treasury (default 0.2)."
+                title="Fraction of rewards allocated to the treasury (min 0, max 1)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Treasury Ratio (τ)"
-                  value={tau}
-                  onChange={(e) => setTau(Number(e.target.value))}
-                  placeholder="0.2"
+                  value={tauInput}
+                  onChange={handleInputChange(setTauInput)}
+                  onBlur={handleBlur(
+                    tauInput,
+                    setTauInput,
+                    () => tau,
+                    0,
+                    1,
+                    0.1,
+                    5
+                  )}
+                  placeholder="0,2"
                   fullWidth
                   variant="outlined"
                   margin="dense"
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            tau,
+                            setTau,
+                            setTauInput,
+                            0,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            tau,
+                            setTau,
+                            setTauInput,
+                            1,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
                 />
               </Tooltip>
 
               <Tooltip
-                title="Proportion of total ADA supply that is actively staked (default 0.8)."
+                title="Proportion of total ADA supply that is actively staked (min 0, max 1)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Participation Rate (θ)"
-                  value={theta}
-                  onChange={(e) => setTheta(Number(e.target.value))}
-                  placeholder="0.8"
+                  value={thetaInput}
+                  onChange={handleInputChange(setThetaInput)}
+                  onBlur={handleBlur(
+                    thetaInput,
+                    setThetaInput,
+                    () => theta,
+                    0,
+                    1,
+                    0.1,
+                    5
+                  )}
+                  placeholder="0,8"
                   fullWidth
                   variant="outlined"
                   margin="dense"
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            theta,
+                            setTheta,
+                            setThetaInput,
+                            0,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            theta,
+                            setTheta,
+                            setThetaInput,
+                            1,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
                 />
               </Tooltip>
 
               <Tooltip
-                title="The amount of ADA you are staking."
+                title="The amount of ADA you are staking (min 0, max 999999)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Amount of ADA"
-                  value={adaAmount}
-                  onChange={(e) => setAdaAmount(Number(e.target.value))}
+                  value={adaAmountInput}
+                  onChange={handleInputChange(setAdaAmountInput)}
+                  onBlur={handleBlur(
+                    adaAmountInput,
+                    setAdaAmountInput,
+                    () => adaAmount,
+                    0,
+                    999999,
+                    10,
+                    5
+                  )}
                   placeholder="100"
                   fullWidth
                   variant="outlined"
                   margin="dense"
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            adaAmount,
+                            setAdaAmount,
+                            setAdaAmountInput,
+                            0,
+                            10,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            adaAmount,
+                            setAdaAmount,
+                            setAdaAmountInput,
+                            999999,
+                            10,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
                 />
               </Tooltip>
 
@@ -492,11 +856,18 @@ const Simulator = () => {
               <Typography
                 variant="h6"
                 gutterBottom
-                style={{ color: 'white', textAlign: 'center', marginBottom: '5px' }}
+                style={{
+                  color: 'white',
+                  textAlign: 'center',
+                  marginBottom: '5px',
+                }}
               >
                 Current ADA Price
               </Typography>
-              <Typography variant="h5" style={{ color: '#fff', textAlign: 'center' }}>
+              <Typography
+                variant="h5"
+                style={{ color: '#fff', textAlign: 'center' }}
+              >
                 {livePrice ? `$${livePrice}` : 'Fetching price...'}
               </Typography>
             </Paper>
@@ -505,7 +876,10 @@ const Simulator = () => {
       </Grid>
 
       {/* Rewards Section */}
-      <Box mt={4} style={{ display: 'flex', justifyContent: 'space-evenly', width: '100%' }}>
+      <Box
+        mt={4}
+        style={{ display: 'flex', justifyContent: 'space-evenly', width: '100%' }}
+      >
         {['day', 'epoch', 'month', 'year'].map((period) => (
           <Paper
             key={period}
@@ -516,7 +890,10 @@ const Simulator = () => {
               width: '20%',
             }}
           >
-            <Typography variant="body1" style={{ color: '#fff', textAlign: 'center' }}>
+            <Typography
+              variant="body1"
+              style={{ color: '#fff', textAlign: 'center' }}
+            >
               {period === 'day'
                 ? '1 Day'
                 : period === 'epoch'
@@ -525,16 +902,24 @@ const Simulator = () => {
                 ? '1 Month'
                 : '1 Year'}
             </Typography>
-            <Typography variant="h6" style={{ textAlign: 'center', color: '#fff' }}>
-              {rewardEstimate
-                ? `${rewardEstimate[period].min.toFixed(6)} - ${rewardEstimate[period].max.toFixed(6)} ADA`
+            <Typography
+              variant="h6"
+              style={{ textAlign: 'center', color: '#fff' }}
+            >
+              {rewardEstimate && livePrice
+                ? `${rewardEstimate[period].min.toFixed(6)} - ${rewardEstimate[
+                    period
+                  ].max.toFixed(6)} ADA`
                 : 'Calculating...'}
             </Typography>
-            <Typography variant="body2" style={{ textAlign: 'center', color: '#fff' }}>
-              {rewardEstimate
-                ? `$${(rewardEstimate[period].min * livePrice).toFixed(2)} - $${(
-                    rewardEstimate[period].max * livePrice
-                  ).toFixed(2)} USD`
+            <Typography
+              variant="body2"
+              style={{ textAlign: 'center', color: '#fff' }}
+            >
+              {rewardEstimate && livePrice
+                ? `$${(rewardEstimate[period].min * livePrice).toFixed(2)} - $${
+                    (rewardEstimate[period].max * livePrice).toFixed(2)
+                  } USD`
                 : 'Calculating...'}
             </Typography>
           </Paper>

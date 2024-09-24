@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Typography, Grid, Box, Paper, TextField, Tooltip } from '@mui/material';
+import {
+  Button,
+  Typography,
+  Grid,
+  Box,
+  Paper,
+  TextField,
+  Tooltip,
+  InputAdornment,
+  IconButton,
+} from '@mui/material';
 import { Line } from 'react-chartjs-2';
-import axios from 'axios';
 import {
   Chart,
   CategoryScale,
@@ -14,31 +23,53 @@ import {
   Filler,
 } from 'chart.js';
 import { useNavigate } from 'react-router-dom';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 
-// Registering scales and the Filler plugin in Chart.js
-Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Title, ChartTooltip, Legend, Filler);
+// Registering necessary Chart.js components
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  Legend,
+  Filler
+);
 
 const SimulatorTwo = () => {
-  // State variables
+  // State variables for raw input values
+  const [rhoInput, setRhoInput] = useState('0,003');
+  const [tauInput, setTauInput] = useState('0,2');
+  const [thetaInput, setThetaInput] = useState('0,8');
+  const [feesInput, setFeesInput] = useState('0,05'); // Fees as a percentage
+
+  // Parsed numeric values
   const [rho, setRho] = useState(0.003); // Monetary expansion parameter
   const [tau, setTau] = useState(0.2);   // Treasury growth parameter
   const [theta, setTheta] = useState(0.8); // Participation parameter
-  const [fees, setFees] = useState(100000); // Fees per epoch
+  const [fees, setFees] = useState(0.05); // Fees as a percentage (e.g., 5%)
+
   const [chartType, setChartType] = useState('reserve'); // Default chart view
   const [projections, setProjections] = useState([]); // Projections data
   const [scenario, setScenario] = useState('neutral'); // Scenario: 'positive', 'neutral', 'negative'
   const navigate = useNavigate();
 
   // Initial values
-  const initialReserve = 14000000000; // Example initial reserve in ADA
+  const initialReserve = 14000000000; // Initial reserve in ADA
   const initialTreasury = 0; // Initial treasury amount
 
   // Function to reset parameters to default
   const resetParams = () => {
     setRho(0.003);
+    setRhoInput('0,003');
     setTau(0.2);
+    setTauInput('0,2');
     setTheta(0.8);
-    setFees(100000);
+    setThetaInput('0,8');
+    setFees(0.05);
+    setFeesInput('0,05');
     setScenario('neutral');
   };
 
@@ -46,15 +77,23 @@ const SimulatorTwo = () => {
   const applyScenario = (scenario) => {
     setScenario(scenario);
     if (scenario === 'positive') {
-      setRho(0.005);  // Higher monetary expansion rate
-      setTau(0.15);   // Lower treasury ratio
-      setTheta(0.9);  // Higher participation rate
-      setFees(150000); // Higher fees due to increased network activity
+      setRho(0.005);
+      setRhoInput('0,005');
+      setTau(0.15);
+      setTauInput('0,15');
+      setTheta(0.9);
+      setThetaInput('0,9');
+      setFees(0.07);
+      setFeesInput('0,07');
     } else if (scenario === 'negative') {
-      setRho(0.002);  // Lower monetary expansion rate
-      setTau(0.25);   // Higher treasury ratio
-      setTheta(0.7);  // Lower participation rate
-      setFees(50000);  // Lower fees due to decreased network activity
+      setRho(0.002);
+      setRhoInput('0,002');
+      setTau(0.25);
+      setTauInput('0,25');
+      setTheta(0.7);
+      setThetaInput('0,7');
+      setFees(0.03);
+      setFeesInput('0,03');
     } else {
       // Neutral scenario
       resetParams();
@@ -75,11 +114,14 @@ const SimulatorTwo = () => {
       const reserveReduction = rho * eta * (tau + (1 - tau) * frew * p);
       currentReserve *= (1 - reserveReduction);
 
-      // Calculate total rewards including fees
-      const totalRewards = (rho * eta * currentReserve + fees) * (1 - tau);
+      // Calculate fees as a percentage of total rewards
+      const feesAmount = (rho * eta * currentReserve) * fees;
 
-      // Update treasury with its share of rewards and fees
-      currentTreasury += tau * (rho * eta * currentReserve + fees);
+      // Calculate total rewards after treasury cut and fees
+      const totalRewards = ((rho * eta * currentReserve) - feesAmount) * (1 - tau);
+
+      // Update treasury with its share of rewards
+      currentTreasury += tau * (rho * eta * currentReserve);
 
       // Record projections
       projections.push({
@@ -87,7 +129,6 @@ const SimulatorTwo = () => {
         date: new Date(Date.now() + i * 5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
         reserve: currentReserve,
         treasury: currentTreasury,
-        fees: fees,
         rewards: totalRewards,
       });
     }
@@ -99,6 +140,102 @@ const SimulatorTwo = () => {
     simulateProjections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rho, tau, theta, fees]);
+
+  // Update parsed values whenever input changes
+  useEffect(() => {
+    let value = rhoInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 0.01) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setRho(parsedValue);
+    }
+  }, [rhoInput]);
+
+  useEffect(() => {
+    let value = tauInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 1) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setTau(parsedValue);
+    }
+  }, [tauInput]);
+
+  useEffect(() => {
+    let value = thetaInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 1) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setTheta(parsedValue);
+    }
+  }, [thetaInput]);
+
+  useEffect(() => {
+    let value = feesInput.replace(',', '.');
+    let parsedValue = parseFloat(value);
+    if (!isNaN(parsedValue) && parsedValue >= 0 && parsedValue <= 1) {
+      parsedValue = parseFloat(parsedValue.toFixed(5));
+      setFees(parsedValue);
+    }
+  }, [feesInput]);
+
+  // Input handling functions
+  const handleInputChange = (setter) => (e) => {
+    setter(e.target.value);
+  };
+
+  const handleBlur = (
+    inputValue,
+    setInput,
+    setValue,
+    min,
+    max,
+    step,
+    decimalPlaces
+  ) => () => {
+    let value = inputValue.replace('.', ',');
+    let parsedValue = parseFloat(value.replace(',', '.'));
+
+    if (isNaN(parsedValue)) {
+      // Reset to previous valid value
+      setInput(setValue().toString().replace('.', ','));
+    } else {
+      if (parsedValue < min) parsedValue = min;
+      if (parsedValue > max) parsedValue = max;
+      parsedValue = parseFloat(parsedValue.toFixed(decimalPlaces));
+      setValue(parsedValue);
+      setInput(parsedValue.toString().replace('.', ','));
+    }
+  };
+
+  const incrementValue = (
+    value,
+    setValue,
+    setInput,
+    max,
+    step,
+    decimalPlaces
+  ) => () => {
+    let newValue = value + step;
+    if (newValue > max) newValue = max;
+    newValue = parseFloat(newValue.toFixed(decimalPlaces));
+    setValue(newValue);
+    setInput(newValue.toString().replace('.', ','));
+  };
+
+  const decrementValue = (
+    value,
+    setValue,
+    setInput,
+    min,
+    step,
+    decimalPlaces
+  ) => () => {
+    let newValue = value - step;
+    if (newValue < min) newValue = min;
+    newValue = parseFloat(newValue.toFixed(decimalPlaces));
+    setValue(newValue);
+    setInput(newValue.toString().replace('.', ','));
+  };
 
   // Chart data
   const data = {
@@ -121,15 +258,6 @@ const SimulatorTwo = () => {
         fill: true,
         tension: 0.1,
         hidden: chartType !== 'treasury',
-      },
-      {
-        label: 'Projected Fees',
-        data: projections.map((point) => point.fees),
-        borderColor: 'rgba(255, 159, 64, 1)',
-        backgroundColor: 'rgba(255, 159, 64, 0.2)',
-        fill: true,
-        tension: 0.1,
-        hidden: chartType !== 'fees',
       },
       {
         label: 'Projected Rewards',
@@ -183,6 +311,11 @@ const SimulatorTwo = () => {
     backgroundColor: 'blue',
   };
 
+  // Icon button styles
+  const iconButtonStyle = {
+    color: '#fff',
+  };
+
   return (
     <div
       style={{
@@ -200,14 +333,19 @@ const SimulatorTwo = () => {
           Cardano Reserve and Staking Analysis
         </Typography>
         <Typography variant="body1" style={{ marginTop: '8px', color: 'white' }}>
-          Compare historical and future projections for Fees, Rewards, Reserve, and Treasury.
+          Compare historical and future projections for Rewards, Reserve, and Treasury.
         </Typography>
       </Box>
 
       {/* Buttons for Switching Between Pages */}
       <Box
         mb={2}
-        style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', gap: '10px' }}
+        style={{
+          textAlign: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '10px',
+        }}
       >
         <Button
           variant="contained"
@@ -246,8 +384,6 @@ const SimulatorTwo = () => {
                 ? 'Projected Reserve Over Time'
                 : chartType === 'treasury'
                 ? 'Projected Treasury Over Time'
-                : chartType === 'fees'
-                ? 'Projected Fees Over Time'
                 : 'Projected Rewards Over Time'}
             </Typography>
             <div style={{ flexGrow: 1 }}>
@@ -284,17 +420,6 @@ const SimulatorTwo = () => {
                 }}
               >
                 Treasury
-              </Button>
-              <Button
-                variant="contained"
-                onClick={() => setChartType('fees')}
-                style={{
-                  ...buttonStyle,
-                  ...(chartType === 'fees' && selectedButtonStyle),
-                  marginRight: '8px',
-                }}
-              >
-                Fees
               </Button>
               <Button
                 variant="contained"
@@ -387,78 +512,246 @@ const SimulatorTwo = () => {
 
               {/* Parameter Inputs */}
               <Tooltip
-                title="Fraction of remaining reserves used as rewards per epoch (default 0.003)."
+                title="Fraction of remaining reserves used as rewards per epoch (min 0, max 0.01)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Monetary Expansion Rate (ρ)"
-                  value={rho}
-                  onChange={(e) => setRho(Number(e.target.value))}
-                  placeholder="0.003"
+                  value={rhoInput}
+                  onChange={handleInputChange(setRhoInput)}
+                  onBlur={handleBlur(
+                    rhoInput,
+                    setRhoInput,
+                    setRho,
+                    0,
+                    0.01,
+                    0.001,
+                    5
+                  )}
+                  placeholder="0,003"
                   fullWidth
                   variant="outlined"
                   margin="dense"
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            rho,
+                            setRho,
+                            setRhoInput,
+                            0,
+                            0.001,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            rho,
+                            setRho,
+                            setRhoInput,
+                            0.01,
+                            0.001,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Tooltip>
 
               <Tooltip
-                title="Fraction of rewards allocated to the treasury (default 0.2)."
+                title="Fraction of rewards allocated to the treasury (min 0, max 1)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Treasury Ratio (τ)"
-                  value={tau}
-                  onChange={(e) => setTau(Number(e.target.value))}
-                  placeholder="0.2"
+                  value={tauInput}
+                  onChange={handleInputChange(setTauInput)}
+                  onBlur={handleBlur(
+                    tauInput,
+                    setTauInput,
+                    setTau,
+                    0,
+                    1,
+                    0.1,
+                    5
+                  )}
+                  placeholder="0,2"
                   fullWidth
                   variant="outlined"
                   margin="dense"
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            tau,
+                            setTau,
+                            setTauInput,
+                            0,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            tau,
+                            setTau,
+                            setTauInput,
+                            1,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Tooltip>
 
               <Tooltip
-                title="Proportion of total ADA supply that is actively staked (default 0.8)."
+                title="Proportion of total ADA supply that is actively staked (min 0, max 1)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
+                  type="text"
                   label="Participation Rate (θ)"
-                  value={theta}
-                  onChange={(e) => setTheta(Number(e.target.value))}
-                  placeholder="0.8"
+                  value={thetaInput}
+                  onChange={handleInputChange(setThetaInput)}
+                  onBlur={handleBlur(
+                    thetaInput,
+                    setThetaInput,
+                    setTheta,
+                    0,
+                    1,
+                    0.1,
+                    5
+                  )}
+                  placeholder="0,8"
                   fullWidth
                   variant="outlined"
                   margin="dense"
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            theta,
+                            setTheta,
+                            setThetaInput,
+                            0,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            theta,
+                            setTheta,
+                            setThetaInput,
+                            1,
+                            0.1,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Tooltip>
 
               <Tooltip
-                title="Average fees collected per epoch (default 100,000 ADA)."
+                title="Fees as a percentage of total rewards (min 0, max 1)."
                 arrow
               >
                 <TextField
-                  type="number"
-                  step="any"
-                  label="Fees per Epoch"
-                  value={fees}
-                  onChange={(e) => setFees(Number(e.target.value))}
-                  placeholder="100000"
+                  type="text"
+                  label="Fees Percentage"
+                  value={feesInput}
+                  onChange={handleInputChange(setFeesInput)}
+                  onBlur={handleBlur(
+                    feesInput,
+                    setFeesInput,
+                    setFees,
+                    0,
+                    1,
+                    0.01,
+                    5
+                  )}
+                  placeholder="0,05"
                   fullWidth
                   variant="outlined"
                   margin="dense"
                   InputLabelProps={{ style: { color: '#fff' } }}
-                  InputProps={{ style: { color: '#fff' } }}
+                  InputProps={{
+                    style: { color: '#fff' },
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={decrementValue(
+                            fees,
+                            setFees,
+                            setFeesInput,
+                            0,
+                            0.01,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <RemoveIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={incrementValue(
+                            fees,
+                            setFees,
+                            setFeesInput,
+                            1,
+                            0.01,
+                            5
+                          )}
+                          size="small"
+                          style={iconButtonStyle}
+                        >
+                          <AddIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
               </Tooltip>
 
