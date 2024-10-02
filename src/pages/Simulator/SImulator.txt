@@ -26,8 +26,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import RemoveIcon from '@mui/icons-material/Remove';
-import SettingsIcon from '@mui/icons-material/Settings';
-import { keyframes } from '@mui/system';
 
 // Registering necessary Chart.js components
 Chart.register(
@@ -42,10 +40,6 @@ Chart.register(
 );
 
 const Simulator = () => {
-  // Your original state variables and functions
-  // (kept intact but not used in the current rendering)
-
-  // State variables
   const [livePrice, setLivePrice] = useState(null);
 
   // State variables for raw input values
@@ -81,7 +75,7 @@ const Simulator = () => {
     try {
       // Fetch historical data for the last 90 days
       const response = await axios.get(
-        `https://api.coingecko.com/api/v3/coins/cardano/market_chart?vs_currency=usd&days=90`
+        https://api.coingecko.com/api/v3/coins/cardano/market_chart?vs_currency=usd&days=90
       );
       // Store data in localStorage
       localStorage.setItem('historicalData', JSON.stringify(response.data));
@@ -413,19 +407,17 @@ const Simulator = () => {
     color: '#fff',
   };
 
-  // Animation for rotating gear icon
-  const rotate = keyframes`
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  `;
-
-  // Original content kept in a function (not rendered)
-  const OriginalContent = () => (
-    <>
+  return (
+    <div
+      style={{
+        backgroundImage: 'linear-gradient(to right, #FBA100, #7B658E)', // New gradient
+        minHeight: '100vh',
+        color: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '40px',
+      }}
+    >
       {/* Title and Description */}
       <Box mb={1} style={{ textAlign: 'center' }}>
         <Typography
@@ -876,7 +868,7 @@ const Simulator = () => {
                 variant="h5"
                 style={{ color: '#fff', textAlign: 'center' }}
               >
-                {livePrice ? `$${livePrice}` : 'Fetching price...'}
+                {livePrice ? $${livePrice} : 'Fetching price...'}
               </Typography>
             </Paper>
           </Box>
@@ -915,9 +907,9 @@ const Simulator = () => {
               style={{ textAlign: 'center', color: '#fff' }}
             >
               {rewardEstimate && livePrice
-                ? `${rewardEstimate[period].min.toFixed(6)} - ${rewardEstimate[
+                ? ${rewardEstimate[period].min.toFixed(6)} - ${rewardEstimate[
                     period
-                  ].max.toFixed(6)} ADA`
+                  ].max.toFixed(6)} ADA
                 : 'Calculating...'}
             </Typography>
             <Typography
@@ -925,51 +917,13 @@ const Simulator = () => {
               style={{ textAlign: 'center', color: '#fff' }}
             >
               {rewardEstimate && livePrice
-                ? `$${(rewardEstimate[period].min * livePrice).toFixed(2)} - $${
+                ? $${(rewardEstimate[period].min * livePrice).toFixed(2)} - $${
                     (rewardEstimate[period].max * livePrice).toFixed(2)
-                  } USD`
+                  } USD
                 : 'Calculating...'}
             </Typography>
           </Paper>
         ))}
-      </Box>
-    </>
-  );
-
-  // Return only the "Under Construction" message
-  return (
-    <div
-      style={{
-        backgroundImage: 'linear-gradient(to right, #FBA100, #7B658E)', // New gradient
-        minHeight: '100vh',
-        color: '#ffffff',
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '40px',
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}
-    >
-      {/* "Under Construction" message with rotating gear icon */}
-      <Box style={{ textAlign: 'center' }}>
-        <SettingsIcon
-          style={{
-            fontSize: '100px',
-            animation: `${rotate} 2s linear infinite`,
-          }}
-        />
-        <Typography
-          variant="h4"
-          sx={{ color: 'white', marginTop: '20px' }}
-        >
-          Under Construction
-        </Typography>
-        <Typography
-          variant="body1"
-          style={{ marginTop: '8px', color: 'white' }}
-        >
-          This page is currently under construction.
-        </Typography>
       </Box>
     </div>
   );
